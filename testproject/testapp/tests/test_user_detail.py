@@ -3,10 +3,13 @@ from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
+import djoser.views
+import djoser.permissions
+
 from testapp.tests.common import create_user, login_user
 
 
-class UserViewSetListTest(APITestCase, assertions.StatusCodeAssertionsMixin):
+class BaseUserViewSetListTest(APITestCase, assertions.StatusCodeAssertionsMixin):
     def setUp(self):
         self.user = create_user(username="user", email="user@example.com")
         self.superuser = create_user(
@@ -15,6 +18,9 @@ class UserViewSetListTest(APITestCase, assertions.StatusCodeAssertionsMixin):
             is_superuser=True,
             is_staff=True,
         )
+
+
+class UserViewSetListTest(BaseUserViewSetListTest):
 
     def test_unauthenticated_user_cannot_get_user_detail(self):
         response = self.client.get(reverse("user-detail", args=[self.user.pk]))
@@ -37,6 +43,24 @@ class UserViewSetListTest(APITestCase, assertions.StatusCodeAssertionsMixin):
         login_user(self.client, self.superuser)
         response = self.client.get(reverse("user-detail", args=[self.user.pk]))
 
+        self.assert_status_equal(response, status.HTTP_200_OK)
+
+
+class ModifiedPermissionsUserViewSetListTest(BaseUserViewSetListTest):
+    def setUp(self):
+        super().setUp()
+        self.previous_permissions = djoser.views.UserViewSet.permission_classes
+        djoser.views.UserViewSet.permission_classes = \
+            [djoser.permissions.CurrentUserOrAdminOrReadOnly]
+
+    def tearDown(self):
+        super().tearDown()
+        djoser.views.UserViewSet.permission_classes = \
+            self.previous_permissions
+
+    def test_user_can_get_other_user_detail(self):
+        login_user(self.client, self.user)
+        response = self.client.get(reverse("user-detail", args=[self.superuser.pk]))
         self.assert_status_equal(response, status.HTTP_200_OK)
 
 
