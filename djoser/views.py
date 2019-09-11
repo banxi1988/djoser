@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from djoser import signals, utils
 from djoser.compat import get_user_email
 from djoser.conf import settings
+from drf_yasg.utils import swagger_auto_schema, no_body
 
 User = get_user_model()
 
@@ -21,7 +22,10 @@ class TokenCreateView(utils.ActionViewMixin, generics.GenericAPIView):
     serializer_class = settings.SERIALIZERS.token_create
     permission_classes = settings.PERMISSIONS.token_create
 
-    def _action(self, serializer):
+    @swagger_auto_schema(responses={201: settings.SERIALIZERS.token})
+    def post(self, request, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         token = utils.login_user(self.request, serializer.user)
         token_serializer_class = settings.SERIALIZERS.token
         return Response(
@@ -164,7 +168,8 @@ class UserViewSet(viewsets.ModelViewSet):
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(["get", "put", "patch", "delete"], detail=False)
+    @swagger_auto_schema(method='get', is_list=False,responses={200:settings.SERIALIZERS.current_user})
+    @action(["get", "put", "patch", "delete"], detail=False,suffix="Instance")
     def me(self, request, *args, **kwargs):
         self.get_object = self.get_instance
         if request.method == "GET":
