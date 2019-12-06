@@ -114,12 +114,15 @@ class TokenCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         password = attrs.get("password")
         params = {settings.LOGIN_FIELD: attrs.get(settings.LOGIN_FIELD)}
+        print("login params:",params, f' password={password}')
         self.user = authenticate(**params, password=password)
         if not self.user:
+            print("authenticate failed")
             self.user = User.objects.filter(**params).first()
             if self.user and not self.user.check_password(password):
                 self.fail("invalid_credentials")
         if self.user and self.user.is_active:
+            print("user is not active")
             return attrs
         self.fail("invalid_credentials")
 
